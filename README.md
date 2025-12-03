@@ -29,7 +29,7 @@ Key Use Cases
 
 -Receive notifications/status about low moisture (simulated)
 
--Send watering commands to the IoT device simulator via MQTT
+--Send watering commands to the IoT device simulator via MQTT
 
 -Store & view historical sensor data using Azure Blob Storage
 
