@@ -26,9 +26,13 @@ Business Owners – explore data trends and plan product improvements
 Key Use Cases
 
 -View real-time soil moisture & light data (via REST API)
+
 -Receive notifications/status about low moisture (simulated)
+
 -Send watering commands to the IoT device simulator via MQTT
+
 -Store & view historical sensor data using Azure Blob Storage
+
 -Analyze plant health trends over time
 
 --
