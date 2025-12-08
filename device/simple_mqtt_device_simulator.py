@@ -7,11 +7,11 @@ from paho.mqtt import client as mqtt
 
 # Azure IoT Hub connection details
 path_to_root_cert = "root_cert.pem"
-device_id = "device-id"
-sas_token = "device-sas-token"
-iot_hub_name = "iot-hub-name"
-mqtt_hub_hostname = "test.mosquitto.org"
-mqtt_hub_port = 1883
+device_id = "spcs-simulator-1"
+sas_token = "SharedAccessSignature sr=spcs-iot-hub-yunus-doruk.azure-devices.net%2Fdevices%2Fspcs-simulator-1&sig=fVnNwY6liaQN05M%2Fce%2FJNyOcadGc9Fbrzu7K92YB2xY%3D&se=1765211828"
+iot_hub_name = "spcs-iot-hub-yunus-doruk"
+mqtt_hub_hostname = iot_hub_name + ".azure-devices.net"
+mqtt_hub_port = 8883
 
 
 def on_connect(client, userdata, flags, rc):
@@ -46,14 +46,14 @@ def simulate_device():
     client.on_message = on_message
 
     # Azure IoT Hub connection details
-    # print(iot_hub_name+".azure-devices.net/" +
-    #       device_id + "/?api-version=2021-04-12")
-    # client.username_pw_set(username=iot_hub_name+".azure-devices.net/" +
-    #                        device_id + "/?api-version=2021-04-12", password=sas_token)
+    print(iot_hub_name+".azure-devices.net/" +
+           device_id + "/?api-version=2021-04-12")
+    client.username_pw_set(username=iot_hub_name+".azure-devices.net/" +
+                            device_id + "/?api-version=2021-04-12", password=sas_token)
 
-    # client.tls_set(ca_certs=path_to_root_cert, certfile=None, keyfile=None,
-    #                cert_reqs=ssl.CERT_REQUIRED, tls_version=ssl.PROTOCOL_TLSv1_2, ciphers=None)
-    # client.tls_insecure_set(False)
+    client.tls_set(ca_certs=path_to_root_cert, certfile=None, keyfile=None,
+                   cert_reqs=ssl.CERT_REQUIRED, tls_version=ssl.PROTOCOL_TLSv1_2, ciphers=None)
+    client.tls_insecure_set(False)
 
     print("Connecting MQTT broker")
     client.connect(mqtt_hub_hostname, port=mqtt_hub_port)
