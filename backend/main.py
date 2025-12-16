@@ -6,6 +6,8 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from pydantic import BaseModel
+import random
+
 
 app = FastAPI(
     title="Smart Plant Care System API",
@@ -81,6 +83,61 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
+def get_dummy_telemetry() -> dict:
+    
+    return {
+        "timestamp": datetime.utcnow().isoformat(),
+        "soil_moisture": random.uniform(20, 80),   
+        "temperature": random.uniform(18, 30),     
+        "light_level": random.uniform(100, 800),   
+    }
+
+
+def analyze_plant_status(soil_moisture: float, temperature: float, light_level: float) -> tuple[str, str]:
+
+    status = "OK"
+    advice_parts: list[str] = []
+
+    # Nem analizi
+    if soil_moisture < 25:
+        status = "Critical"
+        advice_parts.append("The soil is very dry, water it immediately.")
+    elif soil_moisture < 40:
+        if status != "Critical":
+            status = "Warning"
+        advice_parts.append("The soil is drying out; watering may be needed soon.")
+    elif soil_moisture > 75:
+        if status != "Critical":
+            status = "Warning"
+        advice_parts.append("The soil is too wet; reduce watering.")
+
+    # Sıcaklık analizi
+    if temperature < 15:
+        if status != "Critical":
+            status = "Warning"
+        advice_parts.append("The temperature is low; warm up the environment slightly.")
+    elif temperature > 30:
+        if status != "Critical":
+            status = "Warning"
+        advice_parts.append("The temperature is high; shade or ventilation may be needed.")
+
+    # Işık analizi
+    if light_level < 150:
+        if status != "Critical":
+            status = "Warning"
+        advice_parts.append("The light level is low; move the plant to a brighter place.")
+    elif light_level > 900:
+        if status != "Critical":
+            status = "Warning"
+        advice_parts.append("The light level is too high; avoid direct sunlight.")
+
+    # Hiç tavsiye yoksa
+    if not advice_parts:
+        advice_parts.append("Conditions look good. The current care routine is appropriate.")
+
+    advice = " ".join(advice_parts)
+    return status, advice
+
 
 async def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
     credentials_exception = HTTPException(
@@ -112,12 +169,16 @@ async def get_current_active_user(current_user: User = Depends(get_current_user)
 class WateringRequest(BaseModel):
     duration_seconds: int
 
+class PlantStatus(BaseModel):
+    soil_moisture: float
+    temperature: float
+    light_level: float
+    status: str
+    advice: str
+
 @app.post("/api/token", response_model=Token)
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
-    """
-    OAuth2 password flow ile token üretir.
-    Kullanıcı adı / şifre doğruysa access_token döner.
-    """
+    
     user = authenticate_user(form_data.username, form_data.password)
     if not user:
         raise HTTPException(
@@ -136,9 +197,7 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
 
 @app.get("/api/health")
 def health_check():
-    """
-    Basit health endpoint – API ayakta mı?
-    """
+    
     return {
         "status": "ok",
         "service": "spcs-backend",
@@ -148,18 +207,8 @@ def health_check():
 
 @app.get("/api/telemetry/latest")
 async def get_latest_telemetry(current_user: User = Depends(get_current_active_user)):
-    """
-    Şimdilik dummy veri döndürüyoruz.
-    Bu endpoint artık JWT ile korunuyor (Bearer token gerekli).
-    """
-    return {
-        "device_id": "spcs-simulator-1",
-        "soil_moisture": 41.5,
-        "light_level": 73.2,
-        "temperature": 24.3,
-        "timestamp": datetime.utcnow().isoformat() + "Z",
-        "user": current_user.username,
-    }
+    
+    return get_dummy_telemetry()
 
 
 @app.post("/api/water")
@@ -167,10 +216,7 @@ async def send_watering_command(
     body: WateringRequest,
     current_user: User = Depends(get_current_active_user),
 ):
-    """
-    Sulama komutu simülasyonu.
-    Bu endpoint artık JWT ile korunuyor (Bearer token gerekli).
-    """
+    
     return {
         "device_id": "spcs-simulator-1",
         "command": "water",
@@ -180,3 +226,25 @@ async def send_watering_command(
         "user": current_user.username,
     }
 
+@app.get("/api/analysis/status", response_model=PlantStatus)
+async def get_plant_status(current_user: User = Depends(get_current_active_user)):
+
+    telemetry = get_dummy_telemetry()
+
+    soil_moisture = telemetry["soil_moisture"]
+    temperature = telemetry["temperature"]
+    light_level = telemetry["light_level"]
+
+    status, advice = analyze_plant_status(
+        soil_moisture=soil_moisture,
+        temperature=temperature,
+        light_level=light_level,
+    )
+
+    return PlantStatus(
+        soil_moisture=soil_moisture,
+        temperature=temperature,
+        light_level=light_level,
+        status=status,
+        advice=advice,
+    )
